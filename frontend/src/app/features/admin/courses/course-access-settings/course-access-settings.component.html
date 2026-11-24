@@ -1,0 +1,339 @@
+<div class="cas-root" dir="rtl">
+  <!-- ═══════ Header ═══════ -->
+  <header class="cas-header">
+    <div class="cas-header-inner">
+      <button type="button" class="cas-icon-btn" (click)="goBack()" matTooltip="بازگشت">
+        <mat-icon>arrow_forward</mat-icon>
+      </button>
+
+      <div class="cas-header-text">
+        <h1 class="cas-header-title">تنظیمات دسترسی دوره</h1>
+        <p class="cas-header-sub">پیکربندی دسترسی ترتیبی و آزادسازی زمان‌بندی‌شده محتوا</p>
+      </div>
+
+      <div class="cas-header-actions">
+        @if (hasChanges()) {
+          <span class="cas-dirty-badge">
+            <span class="cas-dirty-dot"></span>
+            تغییرات ذخیره‌نشده
+          </span>
+        }
+        <button
+          type="button"
+          class="cas-btn cas-btn-ghost"
+          (click)="resetForm()"
+          [disabled]="!canReset() || isSaving()"
+        >
+          <mat-icon>refresh</mat-icon>
+          <span class="cas-btn-label">بازنشانی</span>
+        </button>
+        <button
+          type="button"
+          class="cas-btn cas-btn-primary"
+          (click)="saveSettings()"
+          [disabled]="isSaving() || !canSave()"
+        >
+          @if (isSaving()) {
+            <mat-icon class="cas-spin">sync</mat-icon>
+            <span>در حال ذخیره...</span>
+          } @else {
+            <mat-icon>check</mat-icon>
+            <span>ذخیره تغییرات</span>
+          }
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════ Loading (Skeleton) ═══════ -->
+  @if (isLoading()) {
+    <div class="cas-body">
+      <div class="cas-skeleton" style="height: 74px"></div>
+      <div class="cas-skeleton" style="height: 220px"></div>
+      <div class="cas-skeleton" style="height: 340px"></div>
+      <div class="cas-skeleton" style="height: 160px"></div>
+    </div>
+  }
+
+  <!-- ═══════ Error ═══════ -->
+  @else if (error()) {
+    <div class="cas-body">
+      <div class="cas-error-card">
+        <div class="cas-error-icon">
+          <mat-icon>error_outline</mat-icon>
+        </div>
+        <h2>مشکلی پیش آمد</h2>
+        <p>{{ error() }}</p>
+        <div class="cas-error-actions">
+          <button type="button" class="cas-btn cas-btn-primary" (click)="loadSettings()">
+            <mat-icon>refresh</mat-icon>
+            تلاش مجدد
+          </button>
+          <button type="button" class="cas-btn cas-btn-ghost" (click)="goBack()">بازگشت</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════ Content ═══════ -->
+  @else {
+    <main class="cas-body">
+      <!-- ─── Summary chips ─── -->
+      <div class="cas-summary">
+        <div class="cas-chip" [class.on]="sequentialAccess().enabled">
+          <mat-icon>swap_vert</mat-icon>
+          دسترسی ترتیبی:
+          <strong>{{ sequentialAccess().enabled ? 'فعال' : 'غیرفعال' }}</strong>
+        </div>
+        <div class="cas-chip" [class.on]="dripContent().enabled">
+          <mat-icon>schedule</mat-icon>
+          دریپ محتوا:
+          <strong>{{ dripContent().enabled ? dripDescription() : 'غیرفعال' }}</strong>
+        </div>
+        @if (sequentialAccess().enabled && dripContent().enabled) {
+          <div class="cas-chip warn">
+            <mat-icon>bolt</mat-icon>
+            <strong>هر دو شرط با هم اعمال می‌شوند</strong>
+          </div>
+        }
+      </div>
+
+      <!-- ─── Sequential Access ─── -->
+      <section class="cas-card">
+        <div class="cas-card-head">
+          <div class="cas-card-icon seq">
+            <mat-icon>swap_vert</mat-icon>
+          </div>
+          <div class="cas-card-headings">
+            <h2>دسترسی ترتیبی <span class="cas-en">Sequential Access</span></h2>
+            <p>دانشجو باید درس‌ها را به ترتیب و یکی‌یکی بگذراند</p>
+          </div>
+          <mat-slide-toggle
+            class="cas-head-toggle"
+            [ngModel]="sequentialAccess().enabled"
+            (ngModelChange)="setSequentialEnabled($event)"
+          >
+          </mat-slide-toggle>
+        </div>
+
+        <div class="cas-expand" [class.open]="sequentialAccess().enabled">
+          <div class="cas-expand-inner">
+            <div class="cas-card-body">
+              <div class="cas-option-row">
+                <div class="cas-option-text">
+                  <span class="cas-option-title">الزام تکمیل درس قبلی</span>
+                  <span class="cas-option-desc">
+                    اگر فعال باشد، درس بعدی فقط پس از علامت‌گذاری «تکمیل شده» برای درس قبلی باز
+                    می‌شود. اگر غیرفعال باشد، صرف مشاهده درس قبلی کافی است.
+                  </span>
+                </div>
+                <mat-slide-toggle
+                  [ngModel]="sequentialAccess().requirePreviousCompletion"
+                  (ngModelChange)="setSequentialRequirePreviousCompletion($event)"
+                >
+                </mat-slide-toggle>
+              </div>
+
+              <div class="cas-note">
+                <mat-icon>info</mat-icon>
+                <span
+                  >ترتیب درس‌ها بر اساس فصل‌ها و ترتیب درسی در Course Builder اعمال می‌شود.</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Drip Content ─── -->
+      <section class="cas-card">
+        <div class="cas-card-head">
+          <div class="cas-card-icon drip">
+            <mat-icon>schedule</mat-icon>
+          </div>
+          <div class="cas-card-headings">
+            <h2>آزادسازی زمان‌بندی‌شده <span class="cas-en">Drip Content</span></h2>
+            <p>درس‌ها بر اساس برنامه زمانی مشخص، به‌تدریج آزاد می‌شوند</p>
+          </div>
+          <mat-slide-toggle
+            class="cas-head-toggle"
+            [ngModel]="dripContent().enabled"
+            (ngModelChange)="setDripEnabled($event)"
+          >
+          </mat-slide-toggle>
+        </div>
+
+        <div class="cas-expand" [class.open]="dripContent().enabled">
+          <div class="cas-expand-inner">
+            <div class="cas-card-body">
+              <div class="cas-grid-2">
+                <mat-form-field appearance="outline">
+                  <mat-label>تعداد درس در هر بازه</mat-label>
+                  <mat-select
+                    panelClass="cas-select-panel"
+                    [ngModel]="dripContent().lessonsPerInterval"
+                    (ngModelChange)="setDripLessonsPerInterval($event)"
+                  >
+                    @for (opt of lessonsPerIntervalOptions; track opt.value) {
+                      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                    }
+                  </mat-select>
+                  <mat-hint>چند درس در هر بازه آزاد شود؟</mat-hint>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>بازه زمانی</mat-label>
+                  <mat-select
+                    panelClass="cas-select-panel"
+                    [ngModel]="dripContent().intervalHours"
+                    (ngModelChange)="setDripIntervalHours($event)"
+                  >
+                    @for (opt of intervalOptions; track opt.value) {
+                      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                    }
+                  </mat-select>
+                  <mat-hint>فاصله بین آزادسازی‌ها</mat-hint>
+                </mat-form-field>
+              </div>
+
+              <div class="cas-option-row">
+                <div class="cas-option-text">
+                  <span class="cas-option-title">الزام تکمیل درس قبلی برای دریپ</span>
+                  <span class="cas-option-desc">
+                    اگر فعال باشد، هم باید درس قبلی کامل شده باشد و هم زمان دریپ رسیده باشد. اگر
+                    غیرفعال باشد، فقط زمان مهم است.
+                  </span>
+                </div>
+                <mat-slide-toggle
+                  [ngModel]="dripContent().requirePreviousCompletion"
+                  (ngModelChange)="setDripRequirePreviousCompletion($event)"
+                >
+                </mat-slide-toggle>
+              </div>
+
+              <mat-form-field appearance="outline" class="cas-full">
+                <mat-label>ساعت آزادسازی در روز (اختیاری)</mat-label>
+                <input
+                  matInput
+                  type="time"
+                  [ngModel]="dripContent().releaseAtSpecificTime || ''"
+                  (ngModelChange)="onReleaseTimeChange($event)"
+                  placeholder="مثال: 09:00"
+                />
+                <mat-hint>به وقت UTC. خالی بگذارید تا از زمان تکمیل درس قبلی محاسبه شود.</mat-hint>
+              </mat-form-field>
+
+              <!-- 🎯 Live preview timeline -->
+              <div class="cas-preview-box">
+                <div class="cas-preview-head">
+                  <mat-icon>visibility</mat-icon>
+                  <span>پیش‌نمایش زمان‌بندی برای دانشجو</span>
+                </div>
+                <div class="cas-timeline">
+                  @for (item of dripPreview(); track $index) {
+                    <div class="cas-timeline-item" [class.first]="item.first">
+                      <span class="cas-timeline-dot"></span>
+                      <div class="cas-timeline-body">
+                        <span class="cas-timeline-time">{{ item.time }}</span>
+                        <span class="cas-timeline-label">{{ item.label }} آزاد می‌شود</span>
+                      </div>
+                    </div>
+                  }
+                  <div class="cas-timeline-item more">
+                    <span class="cas-timeline-dot"></span>
+                    <div class="cas-timeline-body">
+                      <span class="cas-timeline-label">و الی آخر...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              @if (dripContent().enabled && sequentialAccess().enabled) {
+                <div class="cas-warning-box">
+                  <mat-icon>warning_amber</mat-icon>
+                  <p>
+                    <strong>هر دو قانون فعال‌اند:</strong>
+                    درس بعدی فقط زمانی باز می‌شود که (۱) درس قبلی کامل شده باشد و (۲) زمان دریپ فرا
+                    رسیده باشد.
+                  </p>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Advanced ─── -->
+      <section class="cas-card">
+        <div class="cas-card-head">
+          <div class="cas-card-icon adv">
+            <mat-icon>tune</mat-icon>
+          </div>
+          <div class="cas-card-headings">
+            <h2>تنظیمات پیشرفته</h2>
+            <p>کنترل‌های اضافی برای مدیریت دسترسی</p>
+          </div>
+        </div>
+
+        <div class="cas-card-body">
+          <div class="cas-option-row">
+            <div class="cas-option-text">
+              <span class="cas-option-title">اجازه استثنا برای ثبت‌نام‌های خاص</span>
+              <span class="cas-option-desc">
+                ادمین می‌تواند برای دانشجوی خاص (VIP یا تستر) دسترسی کامل به همه درس‌ها بدهد. این
+                گزینه در بخش مدیریت ثبت‌نام‌ها در دسترس است.
+              </span>
+            </div>
+            <mat-slide-toggle
+              [ngModel]="allowEnrollmentOverride()"
+              (ngModelChange)="setAllowEnrollmentOverride($event)"
+            >
+            </mat-slide-toggle>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── Help ─── -->
+      <section class="cas-card help">
+        <div class="cas-card-head">
+          <div class="cas-card-icon help">
+            <mat-icon>lightbulb</mat-icon>
+          </div>
+          <div class="cas-card-headings">
+            <h2>راهنما و مثال‌ها</h2>
+            <p>کدام حالت برای دوره شما مناسب است؟</p>
+          </div>
+        </div>
+
+        <div class="cas-card-body">
+          <div class="cas-help-grid">
+            <div class="cas-help-item">
+              <h4><mat-icon>swap_vert</mat-icon> دسترسی ترتیبی</h4>
+              <ul>
+                <li>مناسب دوره‌های پیش‌نیازدار مثل برنامه‌نویسی</li>
+                <li>درس ۳ بدون درس ۱ و ۲ باز نمی‌شود</li>
+                <li>ترتیب از Course Builder خوانده می‌شود</li>
+              </ul>
+            </div>
+            <div class="cas-help-item">
+              <h4><mat-icon>schedule</mat-icon> دریپ محتوا</h4>
+              <ul>
+                <li>مناسب کنترل سرعت یادگیری</li>
+                <li>مثال: هر روز یک درس یا هر هفته دو درس</li>
+                <li>شمارش از لحظه ثبت‌نام دانشجو شروع می‌شود</li>
+              </ul>
+            </div>
+            <div class="cas-help-item">
+              <h4><mat-icon>bolt</mat-icon> ترکیب هر دو</h4>
+              <ul>
+                <li>قوی‌ترین حالت کنترل دسترسی</li>
+                <li>مثال: درس بعدی ۲۴ ساعت پس از تکمیل درس قبلی</li>
+                <li>جلوگیری از پرش و مطالعه شتاب‌زده</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  }
+</div>
